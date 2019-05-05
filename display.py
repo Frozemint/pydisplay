@@ -1,10 +1,11 @@
 import sys,os
 import curses
 import time
-import forecastiopy
+from forecastiopy import *
 import datetime
 from pytz import timezone
 from dateutil.relativedelta import relativedelta
+from threading import Timer
 
 def draw_app(stdscr):
     #clear screen
@@ -12,6 +13,8 @@ def draw_app(stdscr):
     height, width = stdscr.getmaxyx() #get window height width
     stdscr.clear() #clear screen
     stdscr.refresh()
+
+    apiKey = readAPIKey()
 
     curses.curs_set(0) #cursor to invisible
     curses.start_color()
@@ -31,6 +34,7 @@ def draw_app(stdscr):
             hong_kong = timezone('Asia/Hong_Kong')
             hong_kong_now = datetime.datetime.now(hong_kong)
             intl_time_string = time.strftime('%Y %B %d %H:%M:%S GMT', time.gmtime()) + " ---- " +  hong_kong_now.strftime('%H:%M:%S %Z')
+            forecast = initWeatherAPI()
 
             today = datetime.datetime.now()
             day0 = datetime.datetime(2018, 9, 7, 15, 0, 0, 0) #magic date 
@@ -41,7 +45,7 @@ def draw_app(stdscr):
             outlive_time = relativedelta(today, outlive_day0)
             outlive_time = str(outlive_time.years) + " years " + str(outlive_time.months) + " months " + str(outlive_time.days) + " days " + str(outlive_time.hours) + " hours " + str(outlive_time.minutes) + " minutes " + str(outlive_time.seconds) + "." + str(outlive_time.microseconds//100000) + " seconds "
             current_uptime = relativedelta(today, day00)
-            current_uptime = current_uptime = str(current_uptime.years) + " years " + str(current_uptime.months) + " months " + str(current_uptime.days) + " days " + str(current_uptime.hours) + " hours " + str(current_uptime.minutes) + " minutes " + str(current_uptime.seconds) + "." + str(current_uptime.microseconds//100000) + " seconds "
+            current_uptime_string = str(current_uptime.years) + " years " + str(current_uptime.months) + " months " + str(current_uptime.days) + " days " + str(current_uptime.hours) + " hours " + str(current_uptime.minutes) + " minutes " + str(current_uptime.seconds) + "." + str(current_uptime.microseconds//100000) + " seconds "
             #title bar sector
             stdscr.attron(curses.color_pair(1))
             stdscr.addstr(0, 0, " " * ((width - len(statusbarstr))//2) + statusbarstr + " " * ((width - len(statusbarstr))//2))
@@ -54,27 +58,30 @@ def draw_app(stdscr):
             stdscr.addstr(3, 0, "Current time: ", curses.color_pair(2))
             stdscr.addstr(3, 14, time_string)
 
+            #time progress bar field
+            stdscr.addstr(4, 0, "Minute: [{}".format('#' * int(((current_uptime.seconds % 60) / 60) * 44)) + "{}]".format('-' * (44 - int(((current_uptime.seconds % 60) / 60) * 44))), )
+
             #int'l time field
-            stdscr.addstr(4, 0, "Current GMT: ", curses.color_pair(2))
-            stdscr.addstr(4, 13, intl_time_string)
+            stdscr.addstr(5, 0, "Current GMT: ", curses.color_pair(2))
+            stdscr.addstr(5, 13, intl_time_string)
 
             #divider 
-            stdscr.addstr(5, 0, "--------------")
+            stdscr.addstr(7, 0, "--------------")
 
             #age field
-            stdscr.addstr(7, 0, "Your age: ", curses.color_pair(3))
-            stdscr.addstr(7, 10, current_age)
+            stdscr.addstr(9, 0, "Your age: ", curses.color_pair(3))
+            stdscr.addstr(9, 10, current_age)
 
             #uptime field
-            stdscr.addstr(8, 0, "Your uptime: ", curses.color_pair(3))
-            stdscr.addstr(8, 13, current_uptime)
+            stdscr.addstr(10, 0, "Your uptime: ", curses.color_pair(3))
+            stdscr.addstr(10, 13, current_uptime_string)
 
             #outlive field
-            stdscr.addstr(9, 0, "You are projected to outlive the superceded person in: ", curses.color_pair(4))
-            stdscr.addstr(10, 0, outlive_time)
+            stdscr.addstr(11, 0, "You are projected to outlive the superceded person in: ", curses.color_pair(4))
+            stdscr.addstr(11, 0, outlive_time)
 
             #divider 
-            stdscr.addstr(12, 0, "--------------")
+            stdscr.addstr(13, 0, "--------------")
 
             #current weather field
             stdscr.addstr(14, 0, "Current Weather: ", curses.color_pair(2))
@@ -90,12 +97,20 @@ def draw_app(stdscr):
 
 def main():
     curses.wrapper(draw_app)
+    # forecast = initWeatherAPI()
+    # print(forecast)
+
+def readAPIKey():
+    apiKey = open("key.txt", "r")
+    apiKey = apiKey.readline() #read API key
+    return apiKey
 
 def initWeatherAPI():
     qePark = [49.241753, -123.115268] #https://en.wikipedia.org/wiki/Queen_Elizabeth_Park,_British_Columbia
-    apiKey = open("key.txt", "r")
-    apiKey = apiKey.readLine()
-    forecast = ForecastIO.ForecastIO(apiKey, latitude=qePark[0], longitude=qePark[1])
+    # result = ForecastIO.ForecastIO(apiKey, latitude=qePark[0], longitude=qePark[1])
+    # result = FIOCurrently.FIOCurrently(result) #parse result
+    timer = Timer(60 * 60, initWeatherAPI) #every hour
+    # return result
 
 if __name__ == "__main__":
     main()
